@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.ipynb_checkpoints/
+.mypy_cache/
+.pytest_cache/
+.vscode/
+
+# Editors/IDEs
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Matplotlib cache
+.matplotlib/
+
+# Logs
+*.log
+
+# Packaging
+build/
+dist/
+*.egg-info/
+.eggs/

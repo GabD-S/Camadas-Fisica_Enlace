@@ -166,10 +166,16 @@ def run_receiver(update_callback):
                     'config': config
                 }})
 
-                # Atualiza GUI com gráfico da constelação recebida (apenas para 8-QAM).
+                # Atualiza GUI com gráfico da constelação recebida (para QPSK, 8-QAM e 16-QAM).
                 if config['mod_portadora_type'] == '8-QAM' and received_qam_points:
                     update_callback({'type': 'plot', 'tab': 'constellation_rx', 'data': {'points': received_qam_points}})
-                    logger.info("Constelação recebida com ruído enviada para plotagem.")
+                    logger.info("Constelação 8-QAM recebida com ruído enviada para plotagem.")
+                elif config['mod_portadora_type'] == '16-QAM' and received_qam_points:
+                    update_callback({'type': 'plot', 'tab': 'constellation_rx', 'data': {'points': received_qam_points}})
+                    logger.info("Constelação 16-QAM recebida com ruído enviada para plotagem.")
+                elif config['mod_portadora_type'] == 'QPSK' and received_qam_points:  
+                    update_callback({'type': 'plot', 'tab': 'constellation_rx', 'data': {'points': received_qam_points}})
+                    logger.info("Constelação QPSK recebida com ruído enviada para plotagem.")
 
                 # --- Camada de Enlace: Desenquadramento ---
                 logger.info(f"Iniciando desenquadramento com método '{config['enquadramento_type']}'")

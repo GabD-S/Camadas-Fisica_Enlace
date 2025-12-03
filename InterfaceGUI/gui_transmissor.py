@@ -79,7 +79,7 @@ class TransmissorGUI(ttk.Frame):
         detecao_erro_options = ["Nenhum", "Paridade Par", "CRC-32"]
         correcao_erro_options = ["Nenhum", "Hamming"]
         mod_digital_options = ["NRZ-Polar", "Manchester", "Bipolar"] # Camada Física: banda base.
-        mod_portadora_options = ["Nenhum", "ASK", "FSK", "8-QAM", "16-QAM"] # Camada Física: passa-faixa.
+        mod_portadora_options = ["Nenhum", "ASK", "FSK","QPSK", "8-QAM", "16-QAM"] # Camada Física: passa-faixa.
 
         # Linha de entrada da mensagem.
         self.create_control_row(config_frame, 0, "Mensagem:", ttk.Entry(config_frame, textvariable=self.msg_var))

@@ -257,23 +257,42 @@ class ReceptorGUI(ttk.Frame):
         points = plot_data['points']
 
         # Verifique o tipo de modulação para definir título apropriado
-        if hasattr(self, 'current_modulation') and self.current_modulation == '16-QAM':
+        modulation_type = plot_data.get('modulation', '8-QAM')
+    
+        if modulation_type == '16-QAM':
             title = "Constelação 16-QAM Recebida (com Ruído)"
+        elif modulation_type == 'QPSK':
+            title = "Constelação QPSK Recebida (com Ruído)"
         else:
             title = "Constelação 8-QAM Recebida (com Ruído)"
         
-        self.clear_plot_ax(ax, canvas, "Constelação 8-QAM Recebida (com Ruído)")
-        real = [p.real for p in points]  # Eixo I (em fase)
-        imag = [p.imag for p in points]  # Eixo Q (quadratura)
+        self.clear_plot_ax(ax, canvas, title)
+        
+        real = [p.real for p in points]
+        imag = [p.imag for p in points]
         ax.scatter(real, imag, color='purple', s=40, alpha=0.8, edgecolors='black', linewidths=0.5)
         
-        # Eixos centrais para referência do plano I/Q.
+        # Eixos centrais
         ax.axhline(0, color='gray', lw=0.5)
         ax.axvline(0, color='gray', lw=0.5)
         ax.set_xlabel("Em Fase (I)")
         ax.set_ylabel("Quadratura (Q)")
         
-        # Ajuste automático dos limites dos eixos, garantindo exibição de todos pontos e o centro.
+        # Adicionar pontos de referência da constelação ideal
+        if modulation_type == 'QPSK':
+            # Pontos de referência do QPSK
+            qpsk_ref_points = [
+                1/np.sqrt(2) + 1j/np.sqrt(2),   # 00 (45°)
+                -1/np.sqrt(2) + 1j/np.sqrt(2),  # 01 (135°)
+                -1/np.sqrt(2) - 1j/np.sqrt(2),  # 10 (225°)
+                1/np.sqrt(2) - 1j/np.sqrt(2)    # 11 (315°)
+            ]
+            real_ref = [p.real for p in qpsk_ref_points]
+            imag_ref = [p.imag for p in qpsk_ref_points]
+            ax.scatter(real_ref, imag_ref, color='red', s=80, alpha=0.3, marker='x', label='Ideal')
+            ax.legend()
+        
+        # Ajuste automático dos limites
         all_coords = real + imag
         if all_coords:
             max_abs_val = max(abs(val) for val in all_coords)
@@ -283,20 +302,8 @@ class ReceptorGUI(ttk.Frame):
         else:
             ax.set_xlim(-1.5, 1.5)
             ax.set_ylim(-1.5, 1.5)
-        ax.set_aspect('equal', 'box')  # Escala igual para ambos os eixos.
-
-        if title.startswith("Constelação 16-QAM"):
-            # Adicione pontos de referência da constelação 16-QAM ideal
-            qam16_ref_points = [
-                -3+3j, -1+3j, 1+3j, 3+3j,
-                -3+1j, -1+1j, 1+1j, 3+1j,
-                -3-1j, -1-1j, 1-1j, 3-1j,
-                -3-3j, -1-3j, 1-3j, 3-3j
-            ]
-            real_ref = [p.real for p in qam16_ref_points]
-            imag_ref = [p.imag for p in qam16_ref_points]
-            ax.scatter(real_ref, imag_ref, color='gray', s=20, alpha=0.3, marker='x')
         
+        ax.set_aspect('equal', 'box')
         canvas.draw()
 
     def process_queue(self):

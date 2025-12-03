@@ -98,3 +98,40 @@ def plot_constellation(qam_points, title="Diagrama de Constelação 8-QAM"):
 
     plt.tight_layout()
     plt.show()
+
+def plot_qam16_constellation(qam_points, title="Diagrama de Constelação 16-QAM"):
+    """
+    Plota o diagrama de constelação para 16-QAM.
+    """
+    i_components = [p.real for p in qam_points]
+    q_components = [p.imag for p in qam_points]
+    
+    plt.figure(figsize=(8, 8))
+    plt.scatter(i_components, q_components, c='blue', marker='o', alpha=0.6)
+    
+    # Adiciona pontos de referência da constelação ideal
+    qam16_ref = [
+        -3+3j, -1+3j, 1+3j, 3+3j,
+        -3+1j, -1+1j, 1+1j, 3+1j,
+        -3-1j, -1-1j, 1-1j, 3-1j,
+        -3-3j, -1-3j, 1-3j, 3-3j
+    ]
+    real_ref = [p.real for p in qam16_ref]
+    imag_ref = [p.imag for p in qam16_ref]
+    plt.scatter(real_ref, imag_ref, color='red', s=50, alpha=0.3, marker='x')
+    
+    plt.title(title, fontsize=14)
+    plt.xlabel("Componente em Fase (I)", fontsize=12)
+    plt.ylabel("Componente em Quadratura (Q)", fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.axhline(0, color='black', linewidth=0.5)
+    plt.axvline(0, color='black', linewidth=0.5)
+    plt.axis('equal')
+    
+    # Adiciona grade mais densa para 16-QAM
+    for i in [-3, -1, 1, 3]:
+        plt.axhline(i, color='gray', linewidth=0.2, linestyle='--')
+        plt.axvline(i, color='gray', linewidth=0.2, linestyle='--')
+    
+    plt.tight_layout()
+    plt.show()

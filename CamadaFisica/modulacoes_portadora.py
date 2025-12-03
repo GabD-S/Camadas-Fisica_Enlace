@@ -27,6 +27,23 @@ class CarrierModulator:
         # Calcula o número de amostras por bit para reconstrução precisa da forma de onda.
         self.samples_per_bit = int(sampling_rate / bit_rate)
 
+        self.QPSK_MAP = {
+            '00': complex( 1/np.sqrt(2),  1/np.sqrt(2)),  # 45°
+            '01': complex(-1/np.sqrt(2),  1/np.sqrt(2)),  # 135°
+            '10': complex(-1/np.sqrt(2), -1/np.sqrt(2)),  # 225°
+            '11': complex( 1/np.sqrt(2), -1/np.sqrt(2)),  # 315°
+        }
+        
+        # Alternativa: constelação mais comum (0°, 90°, 180°, 270°)
+        # self.QPSK_MAP = {
+        #     '00': complex( 1,  0),  # 0°
+        #     '01': complex( 0,  1),  # 90°
+        #     '10': complex(-1,  0),  # 180°
+        #     '11': complex( 0, -1),  # 270°
+        # }
+        
+        self.INV_QPSK_MAP = {v: k for k, v in self.QPSK_MAP.items()}
+
         # Mapeamento da constelação 8-QAM: associa cada símbolo de 3 bits a um ponto complexo (I, Q).
         # Estes pontos definem as combinações de amplitude e fase.
         self.QAM8_MAP = {
@@ -41,6 +58,33 @@ class CarrierModulator:
         }
         # Cria um mapeamento reverso para facilitar a busca do símbolo de bits durante a demodulação.
         self.INV_QAM8_MAP = {v: k for k, v in self.QAM8_MAP.items()}
+
+        # Mapeamento da constelação 16-QAM (Gray coding)
+        self.QAM16_MAP = {
+            '0000': complex(-3, -3),
+            '0001': complex(-3, -1),
+            '0010': complex(-3, 3),
+            '0011': complex(-3, 1),
+            '0100': complex(-1, -3),
+            '0101': complex(-1, -1),
+            '0110': complex(-1, 3),
+            '0111': complex(-1, 1),
+            '1000': complex(3, -3),
+            '1001': complex(3, -1),
+            '1010': complex(3, 3),
+            '1011': complex(3, 1),
+            '1100': complex(1, -3),
+            '1101': complex(1, -1),
+            '1110': complex(1, 3),
+            '1111': complex(1, 1),
+        }
+        
+        # Normalização para energia unitária
+        normalization_factor = np.sqrt(10)  # Para constelação 16-QAM
+        for key in self.QAM16_MAP:
+             self.QAM16_MAP[key] /= normalization_factor
+        
+        self.INV_QAM16_MAP = {v: k for k, v in self.QAM16_MAP.items()}
 
     def modulate(self, signal_source, modulation_type):
         """
@@ -60,9 +104,13 @@ class CarrierModulator:
             return self.modulate_ask(signal_source)
         elif modulation_type == "FSK":
             return self.modulate_fsk(signal_source)
+        elif modulation_type == "QPSK":  
+            return self.modulate_qpsk(signal_source)
         elif modulation_type == "8-QAM":
             return self.modulate_8qam(signal_source)
-        elif modulation_type == "Nenhum": # NOVO: Caso a modulação por portadora seja "Nenhum"
+        elif modulation_type == "16-QAM":  
+            return self.modulate_16qam(signal_source)
+        elif modulation_type == "Nenhum": # Caso a modulação por portadora seja "Nenhum"
             # Se não há modulação de portadora, o sinal "analógico" é o próprio sinal digital em banda base.
             # O `signal_source` aqui já deve ser uma forma de onda digital (array NumPy de +1.0/-1.0).
             num_samples = len(signal_source)
@@ -121,6 +169,53 @@ class CarrierModulator:
             # Gera o segmento de onda senoidal para o bit atual e o adiciona ao sinal modulado.
             modulated[start_sample:end_sample] = self.amplitude * np.sin(2 * np.pi * freq_to_use * t[start_sample:end_sample])
         return t, modulated, []  # FSK também não possui diagrama de constelação convencional.
+    
+    def modulate_qpsk(self, bits):
+        """
+        Aplica a modulação QPSK (Quadrature Phase Shift Keying).
+        Cada grupo de 2 bits é mapeado para uma fase específica da portadora.
+        
+        Args:
+            bits (str): A string de bits a ser modulada.
+            
+        Returns:
+            tuple: Eixo de tempo (t), o sinal QPSK modulado, e a lista de pontos da constelação gerados.
+        """
+        # Adiciona bits de padding se necessário (para formar símbolos completos de 2 bits)
+        if len(bits) % 2 != 0:
+            bits += '0' * (2 - len(bits) % 2)
+        
+        # Divide a string de bits em símbolos de 2 bits
+        symbols = [bits[i:i+2] for i in range(0, len(bits), 2)]
+        
+        # Mapeia cada símbolo para seu ponto complexo na constelação QPSK
+        qpsk_points = [self.QPSK_MAP.get(s, complex(0, 0)) for s in symbols]
+        
+        # Calcula o número de amostras por símbolo (2 bits por símbolo)
+        samples_per_symbol = self.samples_per_bit * 2
+        
+        # Cria o eixo de tempo
+        t = np.linspace(0, len(symbols) * 2 / self.bit_rate, 
+                        len(symbols) * samples_per_symbol, endpoint=False)
+        
+        modulated = np.zeros(len(t))
+        
+        for i, point in enumerate(qpsk_points):
+            start_sample = i * samples_per_symbol
+            end_sample = (i + 1) * samples_per_symbol
+            
+            # Calcula as componentes I e Q escaladas pela amplitude
+            i_comp = point.real * self.amplitude
+            q_comp = point.imag * self.amplitude
+            
+            # Gera as portadoras ortogonais
+            cos_carrier = np.cos(2 * np.pi * self.carrier_freq * t[start_sample:end_sample])
+            sin_carrier = np.sin(2 * np.pi * self.carrier_freq * t[start_sample:end_sample])
+            
+            # Combina as componentes para formar o sinal QPSK
+            modulated[start_sample:end_sample] = i_comp * cos_carrier - q_comp * sin_carrier
+        
+        return t, modulated, qpsk_points
 
     def modulate_8qam(self, bits):
         """
@@ -162,6 +257,53 @@ class CarrierModulator:
             # Combina as componentes I e Q com suas portadoras para formar o sinal 8-QAM.
             modulated[start_sample:end_sample] = i_comp * cos_carrier - q_comp * sin_carrier
         return t, modulated, qam_points # Retorna o sinal, o eixo de tempo e os pontos da constelação.
+    
+    def modulate_16qam(self, bits):
+        """"
+        Aplica a modulação 16-QAM (Quadrature Amplitude Modulation).
+        Cada grupo de 4 bits é mapeado para um ponto específico (I, Q) na constelação.
+        
+        Args:
+            bits (str): A string de bits a ser modulada.
+            
+        Returns:
+            tuple: Eixo de tempo (t), o sinal 16-QAM modulado, e a lista de pontos da constelação gerados.
+        """
+        # Adiciona bits de padding se necessário (para formar símbolos completos de 4 bits)
+        if len(bits) % 4 != 0:
+            bits += '0' * (4 - len(bits) % 4)
+        
+        # Divide a string de bits em símbolos de 4 bits
+        symbols = [bits[i:i+4] for i in range(0, len(bits), 4)]
+        
+        # Mapeia cada símbolo para seu ponto complexo na constelação 16-QAM
+        qam_points = [self.QAM16_MAP.get(s, complex(0, 0)) for s in symbols]
+        
+        # Calcula o número de amostras por símbolo (4 bits por símbolo)
+        samples_per_symbol = self.samples_per_bit * 4
+        
+        # Cria o eixo de tempo
+        t = np.linspace(0, len(symbols) * 4 / self.bit_rate, 
+                        len(symbols) * samples_per_symbol, endpoint=False)
+        
+        modulated = np.zeros(len(t))
+        
+        for i, point in enumerate(qam_points):
+            start_sample = i * samples_per_symbol
+            end_sample = (i + 1) * samples_per_symbol
+            
+            # Calcula as componentes I e Q escaladas pela amplitude
+            i_comp = point.real * self.amplitude
+            q_comp = point.imag * self.amplitude
+            
+            # Gera as portadoras ortogonais
+            cos_carrier = np.cos(2 * np.pi * self.carrier_freq * t[start_sample:end_sample])
+            sin_carrier = np.sin(2 * np.pi * self.carrier_freq * t[start_sample:end_sample])
+            
+            # Combina as componentes para formar o sinal 16-QAM
+            modulated[start_sample:end_sample] = i_comp * cos_carrier - q_comp * sin_carrier
+        
+        return t, modulated, qam_points
 
     def demodulate(self, received_signal, modulation_type, config, digital_encoder_instance):
         """
@@ -183,9 +325,13 @@ class CarrierModulator:
             return self._demodulate_ask(received_signal, config, digital_encoder_instance)
         elif modulation_type == "FSK":
             return self._demodulate_fsk(received_signal, config, digital_encoder_instance)
+        elif modulation_type == "QPSK":  # demodulação QPSK
+            return self._demodulate_qpsk(received_signal, config, digital_encoder_instance)
         elif modulation_type == "8-QAM":
             # Demodula 8-QAM e retorna os bits, o sinal digital reconstruído e, **os pontos da constelação ruidosa**.
             return self._demodulate_8qam(received_signal, config, digital_encoder_instance)
+        elif modulation_type == "16-QAM":  # demodulação 16-QAM
+            return self._demodulate_16qam(received_signal, config, digital_encoder_instance)
         elif modulation_type == "Nenhum": # Caso a modulação por portadora seja "Nenhum"
             # Se não houve modulação de portadora, o sinal recebido já é o sinal digital em banda base.
             # O objetivo aqui é reamostrar e converter esse sinal digital de volta para a string de bits.
@@ -206,7 +352,7 @@ class CarrierModulator:
             # com os bits recuperados e o tipo de modulação digital original.
             digital_signal_rx = digital_encoder_instance.encode(bits_str, config['mod_digital_type'], samples_per_bit)
             t_digital = np.arange(len(digital_signal_rx)) / config["sampling_rate"] # Eixo de tempo para a forma de onda reconstruída.
-            # NOVO: Retorna uma lista vazia para os pontos de constelação ruidosa, pois não há constelação para "Nenhum".
+            # Retorna uma lista vazia para os pontos de constelação ruidosa, pois não há constelação para "Nenhum".
             return bits_str, digital_signal_rx, t_digital, [] 
         else:
             raise ValueError(f"Tipo de demodulação desconhecido: {modulation_type}")
@@ -291,6 +437,70 @@ class CarrierModulator:
         t_digital = np.arange(len(digital_signal_rx)) / sampling_rate # Eixo de tempo para a forma de onda reconstruída.
         # NOVO: Retorna uma lista vazia para os pontos de constelação ruidosa, pois FSK não tem constelação.
         return bits, digital_signal_rx, t_digital, [] 
+    
+    def _demodulate_qpsk(self, received_signal, config, digital_encoder_instance):
+        """
+        Realiza a demodulação coerente de QPSK.
+        """
+        bit_rate = config['bit_rate']
+        sampling_rate = config['sampling_rate']
+        freq_base = config['freq_base']
+        
+        # Amostras por símbolo (2 bits por símbolo em QPSK)
+        samples_per_symbol = int(sampling_rate / bit_rate) * 2
+        num_symbols = len(received_signal) // samples_per_symbol
+        
+        bits = ""
+        received_qpsk_points = []
+        
+        for i in range(num_symbols):
+            start_sample = i * samples_per_symbol
+            end_sample = (i + 1) * samples_per_symbol
+            segment = received_signal[start_sample:end_sample]
+            
+            if len(segment) < samples_per_symbol:
+                break
+            
+            # Eixo de tempo para o segmento atual
+            t_segment = np.linspace(i * 2 / bit_rate, (i + 1) * 2 / bit_rate, 
+                                    samples_per_symbol, endpoint=False)
+            
+            # Portadoras locais para projeção I e Q
+            local_cos_carrier = np.cos(2 * np.pi * freq_base * t_segment)
+            local_sin_carrier = np.sin(2 * np.pi * freq_base * t_segment)
+            
+            # Projeção nas componentes I e Q
+            i_component = np.sum(segment * local_cos_carrier)
+            q_component = np.sum(segment * -local_sin_carrier)
+            
+            # Normalização
+            normalization_factor = self.amplitude * np.sum(local_cos_carrier**2)
+            if normalization_factor > 1e-9:
+                received_point = complex(i_component / normalization_factor, 
+                                        q_component / normalization_factor)
+            else:
+                received_point = 0j
+            
+            received_qpsk_points.append(received_point)
+            
+            # Detecção por distância mínima na constelação QPSK
+            closest_constellation_point = min(self.QPSK_MAP.values(), 
+                                            key=lambda c_point: abs(received_point - c_point))
+            
+            # Converte o ponto da constelação de volta para bits
+            bits += self.INV_QPSK_MAP[closest_constellation_point]
+        
+        # Garante que o tamanho final da string de bits não exceda o esperado
+        expected_len = config.get('original_payload_len', len(bits))
+        bits = bits[:expected_len]
+        
+        mod_digital_type = config.get('mod_digital_type', 'NRZ-Polar')
+        
+        # Reconstrói a forma de onda digital
+        digital_signal_rx = digital_encoder_instance.encode(bits, mod_digital_type, self.samples_per_bit)
+        t_digital = np.arange(len(digital_signal_rx)) / sampling_rate
+        
+        return bits, digital_signal_rx, t_digital, received_qpsk_points
 
     def _demodulate_8qam(self, received_signal, config, digital_encoder_instance):
         """
@@ -351,4 +561,68 @@ class CarrierModulator:
         t_digital = np.arange(len(digital_signal_rx)) / sampling_rate # Eixo de tempo para a forma de onda reconstruída.
         
         # ALTERAÇÃO: Agora retorna a lista de pontos de constelação ruidosa também.
+        return bits, digital_signal_rx, t_digital, received_qam_points
+    
+    def _demodulate_16qam(self, received_signal, config, digital_encoder_instance):
+        """
+        Realiza a demodulação coerente de 16-QAM.
+        """
+        bit_rate = config['bit_rate']
+        sampling_rate = config['sampling_rate']
+        freq_base = config['freq_base']
+        
+        # Amostras por símbolo (4 bits por símbolo em 16-QAM)
+        samples_per_symbol = int(sampling_rate / bit_rate) * 4
+        num_symbols = len(received_signal) // samples_per_symbol
+        
+        bits = ""
+        received_qam_points = []
+        
+        for i in range(num_symbols):
+            start_sample = i * samples_per_symbol
+            end_sample = (i + 1) * samples_per_symbol
+            segment = received_signal[start_sample:end_sample]
+            
+            if len(segment) < samples_per_symbol:
+                break
+            
+            # Eixo de tempo para o segmento atual
+            t_segment = np.linspace(i * 4 / bit_rate, (i + 1) * 4 / bit_rate, 
+                                    samples_per_symbol, endpoint=False)
+            
+            # Portadoras locais para projeção I e Q
+            local_cos_carrier = np.cos(2 * np.pi * freq_base * t_segment)
+            local_sin_carrier = np.sin(2 * np.pi * freq_base * t_segment)
+            
+            # Projeção nas componentes I e Q
+            i_component = np.sum(segment * local_cos_carrier)
+            q_component = np.sum(segment * -local_sin_carrier)
+            
+            # Normalização
+            normalization_factor = self.amplitude * np.sum(local_cos_carrier**2)
+            if normalization_factor > 1e-9:
+                received_point = complex(i_component / normalization_factor, 
+                                        q_component / normalization_factor)
+            else:
+                received_point = 0j
+            
+            received_qam_points.append(received_point)
+            
+            # Detecção por distância mínima na constelação 16-QAM
+            closest_constellation_point = min(self.QAM16_MAP.values(), 
+                                            key=lambda c_point: abs(received_point - c_point))
+            
+            # Converte o ponto da constelação de volta para bits
+            bits += self.INV_QAM16_MAP[closest_constellation_point]
+        
+        # Garante que o tamanho final da string de bits não exceda o esperado
+        expected_len = config.get('original_payload_len', len(bits))
+        bits = bits[:expected_len]
+        
+        mod_digital_type = config.get('mod_digital_type', 'NRZ-Polar')
+        
+        # Reconstrói a forma de onda digital
+        digital_signal_rx = digital_encoder_instance.encode(bits, mod_digital_type, self.samples_per_bit)
+        t_digital = np.arange(len(digital_signal_rx)) / sampling_rate
+        
         return bits, digital_signal_rx, t_digital, received_qam_points

@@ -255,6 +255,13 @@ class ReceptorGUI(ttk.Frame):
         """
         ax, canvas = self.ax_const_rx, self.canvas_const_rx
         points = plot_data['points']
+
+        # Verifique o tipo de modulação para definir título apropriado
+        if hasattr(self, 'current_modulation') and self.current_modulation == '16-QAM':
+            title = "Constelação 16-QAM Recebida (com Ruído)"
+        else:
+            title = "Constelação 8-QAM Recebida (com Ruído)"
+        
         self.clear_plot_ax(ax, canvas, "Constelação 8-QAM Recebida (com Ruído)")
         real = [p.real for p in points]  # Eixo I (em fase)
         imag = [p.imag for p in points]  # Eixo Q (quadratura)
@@ -277,6 +284,19 @@ class ReceptorGUI(ttk.Frame):
             ax.set_xlim(-1.5, 1.5)
             ax.set_ylim(-1.5, 1.5)
         ax.set_aspect('equal', 'box')  # Escala igual para ambos os eixos.
+
+        if title.startswith("Constelação 16-QAM"):
+            # Adicione pontos de referência da constelação 16-QAM ideal
+            qam16_ref_points = [
+                -3+3j, -1+3j, 1+3j, 3+3j,
+                -3+1j, -1+1j, 1+1j, 3+1j,
+                -3-1j, -1-1j, 1-1j, 3-1j,
+                -3-3j, -1-3j, 1-3j, 3-3j
+            ]
+            real_ref = [p.real for p in qam16_ref_points]
+            imag_ref = [p.imag for p in qam16_ref_points]
+            ax.scatter(real_ref, imag_ref, color='gray', s=20, alpha=0.3, marker='x')
+        
         canvas.draw()
 
     def process_queue(self):

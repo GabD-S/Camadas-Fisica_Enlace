@@ -2,12 +2,17 @@
 
 import socket
 import sys
+import os
 import numpy as np
 import time
 import logging
 
-# Permite importar módulos de outras pastas do projeto, essenciais para acesso a funcionalidades de cada camada.
-sys.path.append('../')
+# Permite importar módulos de outras pastas do projeto de forma robusta,
+# independentemente do diretório atual de execução.
+# Adiciona o diretório raiz do projeto ao sys.path.
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
 
 from Utilidades import utils
 from CamadaEnlace.deteccao_erros import ErrorDetector

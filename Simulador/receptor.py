@@ -2,6 +2,7 @@
 
 import socket
 import sys
+import os
 import numpy as np
 import time
 import logging
@@ -11,8 +12,11 @@ import time as time_module
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 logging.getLogger('PIL.PngImagePlugin').setLevel(logging.WARNING)
 
-# Permite importação de módulos locais e de outras pastas do projeto.
-sys.path.append('../')
+# Permite importação de módulos locais e de outras pastas do projeto de forma robusta.
+# Adiciona o diretório raiz do projeto ao sys.path com base no caminho deste arquivo.
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
 
 from Utilidades import utils
 from CamadaEnlace.deteccao_erros import ErrorDetector

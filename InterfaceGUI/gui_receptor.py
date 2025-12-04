@@ -442,4 +442,6 @@ class ReceptorGUI(ttk.Frame):
 if __name__ == '__main__':
     root = tk.Tk() # Cria a janela principal do Tkinter.
     app = ReceptorGUI(root) # Instancia a aplicação GUI do Receptor.
-    root.mainloop() # Inicia o loop de eventos do Tkinter, mantendo a GUI em execução e responsiva.
+    root.mainloop() # Inicia o loop de eventos do Tkinter, mantendo a GUI em execução e responsiva. 
+
+    

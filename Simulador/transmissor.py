@@ -89,7 +89,7 @@ def run_transmitter(params):
             logger.info(f"1. (App) Mensagem original em bits (ASCII): {format_log(bits)}")
             update_callback({'type': 'log', 'message': f"1. (App) Mensagem original (ASCII): {len(bits)} bits"})
 
-        # --- Camada de Enlace: Detecção de erros (CRC-32, Paridade) ---
+        # --- Camada de Enlace: Detecção de erros (CRC-32, Paridade, Checksum) ---
         detecao_selecionada = config["detecao_erro_type"]
         payload_com_detecao = bits
         if detecao_selecionada == "CRC-32":
@@ -106,6 +106,14 @@ def run_transmitter(params):
             payload_com_detecao = "".join(bytes_com_paridade)
             logger.info(f"2. (Enlace) Adicionada Paridade Par (esquema 7+1). Payload agora com {len(payload_com_detecao)} bits.")
             update_callback({'type': 'log', 'message': f"2. (Enlace) Adicionada Paridade Par. Total: {len(payload_com_detecao)} bits."})
+        elif detecao_selecionada == "Checksum":  # Checksum
+            # Adiciona checksum de 16 bits
+            payload_com_detecao = error_detector.add_checksum(bits, checksum_bits=16)
+            logger.info(f"2. (Enlace) Adicionado Checksum (16 bits). Payload agora com {len(payload_com_detecao)} bits.")
+            update_callback({'type': 'log', 'message': f"2. (Enlace) Adicionado Checksum 16-bit. Total: {len(payload_com_detecao)} bits."})
+            # Log detalhado para debug
+            checksum_value = payload_com_detecao[-16:]
+            logger.debug(f"Checksum calculado: {checksum_value} (0x{int(checksum_value, 2):04X})")    
 
         # --- Camada de Enlace: Correção de erros (Hamming) ---
         correcao_selecionada = config["correcao_erro_type"]

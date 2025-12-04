@@ -242,6 +242,28 @@ def run_receiver(update_callback):
                         'status': "OK" if detecao_ok else f"INVÁLIDO ({erros} erros)"
                     }})
 
+                elif tipo_erro == "Checksum":  # Verificação de Checksum
+                    if len(data_after_correction) < 16:
+                        raise ValueError("Dados corrigidos menores que tamanho do checksum (16 bits)")
+                    
+                    # Método simples para debug
+                    is_valid, checksum_calc, checksum_recv = error_detector.verify_checksum_simple(
+                        data_after_correction, checksum_bits=16
+                    )
+                    dados_decodificados = data_after_correction[:-16]
+                    detecao_ok = is_valid
+                    
+                    logger.info(f"Checksum calculado: {checksum_calc} (0x{int(checksum_calc, 2):04X})")
+                    logger.info(f"Checksum recebido:  {checksum_recv} (0x{int(checksum_recv, 2):04X})")
+                    logger.info(f"Validação Checksum: {'OK' if detecao_ok else 'INVÁLIDO'}")
+                    
+                    update_callback({'type': 'detection_result', 'data': {
+                        'method': 'Checksum 16-bit',
+                        'status': 'OK' if detecao_ok else 'INVÁLIDO',
+                        'calc': int(checksum_calc, 2),
+                        'recv': int(checksum_recv, 2),
+                    }})    
+
                 else:
                     detecao_ok = True
                     dados_decodificados = data_after_correction

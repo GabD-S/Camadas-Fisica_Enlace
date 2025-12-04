@@ -5,7 +5,7 @@ import math
 
 class CarrierModulator:
     """
-    Implementa diferentes esquemas de modulação por portadora (ASK, FSK, 8-QAM).
+    Implementa diferentes esquemas de modulação por portadora (ASK, FSK, QPSK, 8-QAM, 16-QAM).
     Atua na Camada Física, convertendo sinais digitais em formas de onda analógicas
     apropriadas para transmissão através de um canal de comunicação.
     """

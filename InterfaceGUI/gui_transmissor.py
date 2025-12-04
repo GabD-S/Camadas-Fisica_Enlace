@@ -76,7 +76,7 @@ class TransmissorGUI(ttk.Frame):
 
         # Opções de configuração para cada camada do modelo OSI.
         enquadramento_options = ["Contagem de caracteres", "Byte Stuffing (Flags)", "Bit Stuffing (Flags)"]
-        detecao_erro_options = ["Nenhum", "Paridade Par", "CRC-32"]
+        detecao_erro_options = ["Nenhum", "Paridade Par", "CRC-32", "Checksum"]
         correcao_erro_options = ["Nenhum", "Hamming"]
         mod_digital_options = ["NRZ-Polar", "Manchester", "Bipolar"] # Camada Física: banda base.
         mod_portadora_options = ["Nenhum", "ASK", "FSK","QPSK", "8-QAM", "16-QAM"] # Camada Física: passa-faixa.
@@ -136,7 +136,7 @@ class TransmissorGUI(ttk.Frame):
         # Cada aba exibe um gráfico Matplotlib com barra de ferramentas interativa.
         self.ax_digital, self.canvas_digital, self.toolbar_digital = self.create_plot_tab("Sinal Digital", figsize=(10, 4.5))
         self.ax_analog, self.canvas_analog, self.toolbar_analog = self.create_plot_tab("Sinal Modulado", figsize=(10, 4.5))
-        self.ax_const, self.canvas_const, self.toolbar_const = self.create_plot_tab("Constelação 8-QAM (TX)", figsize=(8, 6))
+        self.ax_const, self.canvas_const, self.toolbar_const = self.create_plot_tab("Constelação 16-QAM (TX)", figsize=(8, 6))
 
     def create_control_row(self, parent, row, label_text, widget):
         """
